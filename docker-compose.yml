@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: sparrow_pwd
+      POSTGRES_DB: sparrow
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+
+  sparrow_forum:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "8025:8025"
+    env_file:
+      - .env
+    networks:
+      - backend
+    volumes:
+      - ./logs:/workplace/run/logs
+
+networks:
+  backend:
