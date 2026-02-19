@@ -9,7 +9,7 @@ import (
 )
 
 // Notifies SSE 推送 handler
-// 客户端访问： GET /notify/:token
+// 客户端访问：GET /api/v1/subscribe/notify + Authorization: Bearer <token>
 func Notifies(c *gin.Context) {
 	userID := c.GetString("userID")
 

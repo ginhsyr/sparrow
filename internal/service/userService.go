@@ -56,7 +56,7 @@ func (s *UserService) UserRegister(nickname, realName, email, password string, b
 	return user, err
 }
 
-func (s *UserService) UpgradePasswordHash(userID int, rawPassword string) error {
+func (s *UserService) UpgradePasswordHash(userID int64, rawPassword string) error {
 	hashedPassword, err := utils.HashPassword(rawPassword)
 	if err != nil {
 		return err

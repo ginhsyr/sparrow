@@ -83,13 +83,11 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	if userID == 0 {
 		return
 	}
-	var req struct {
-		Content string `json:"content"`
-	}
+	var req createPostRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Log.Error("bind json err", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondValidationError(c, err, req)
 		return
 	}
 	post, err := h.service.CreatePost(userID, req.Content)

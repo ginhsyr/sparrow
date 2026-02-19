@@ -33,7 +33,7 @@ func (r *UserRepository) UserRegister(user *model.User) error {
 	return r.DB.Session(&gorm.Session{NewDB: true}).Create(user).Error
 }
 
-func (r *UserRepository) UpdatePassword(userID int, passwordHash string) error {
+func (r *UserRepository) UpdatePassword(userID int64, passwordHash string) error {
 	return r.DB.Session(&gorm.Session{NewDB: true}).
 		Model(&model.User{}).
 		Where("id = ?", userID).

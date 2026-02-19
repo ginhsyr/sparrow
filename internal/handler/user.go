@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"Sparrow/internal/model"
 	"Sparrow/internal/service"
 	"Sparrow/internal/utils"
 	"Sparrow/internal/utils/uJwt"
@@ -35,16 +34,10 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 }
 
 func (h *UserHandler) UserRegister(c *gin.Context) {
-	var req struct {
-		Nickname string `json:"nickname"`
-		RealName string `json:"realName"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		Birthday int64  `json:"birthday"`
-	}
+	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Log.Error("bind json err", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		respondValidationError(c, err, req)
 		return
 	}
 	BirthdayTime := time.Unix(req.Birthday, 0)
@@ -64,13 +57,13 @@ func (h *UserHandler) UserRegister(c *gin.Context) {
 }
 
 func (h *UserHandler) LogIn(c *gin.Context) {
-	var userLogin model.UserLogin
-	if err := c.BindJSON(&userLogin); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var req loginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondValidationError(c, err, req)
 		return
 	}
 
-	user, err := h.service.GetUserByEmail(userLogin.Email)
+	user, err := h.service.GetUserByEmail(req.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
@@ -80,18 +73,18 @@ func (h *UserHandler) LogIn(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "login failed"})
 		return
 	}
-	ok, needsUpgrade := utils.VerifyPassword(user.Password, userLogin.Password)
+	ok, needsUpgrade := utils.VerifyPassword(user.Password, req.Password)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
 		return
 	}
 	if needsUpgrade {
-		if err := h.service.UpgradePasswordHash(user.ID, userLogin.Password); err != nil {
-			utils.Log.Warn("failed to upgrade legacy password hash", zap.Int("userID", user.ID), zap.Error(err))
+		if err := h.service.UpgradePasswordHash(user.ID, req.Password); err != nil {
+			utils.Log.Warn("failed to upgrade legacy password hash", zap.Int64("userID", user.ID), zap.Error(err))
 		}
 	}
 
-	token, err := uJwt.GenerateJWT(strconv.FormatInt(int64(user.ID), 10), user.Role)
+	token, err := uJwt.GenerateJWT(strconv.FormatInt(user.ID, 10), user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return

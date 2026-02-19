@@ -97,6 +97,36 @@ docker compose up --build
 - `includeEdits`（`true/false`，默认 `false`）
 - `editsLimit`（`1-200`，默认 `20`，仅在 `includeEdits=true` 时生效）
 
+### 请求参数校验
+
+- `POST /auth/register`
+- `nickname`：必填，不能全空白，最大长度 `20`
+- `realName`：必填，不能全空白，最大长度 `20`
+- `email`：必填，不能全空白，必须为合法邮箱，最大长度 `254`
+- `password`：必填，长度 `8-72`，且必须包含大写字母 + 小写字母 + 数字
+- `birthday`：可选，Unix 时间戳（秒）
+
+- `POST /auth/login`
+- `email`：必填，不能全空白，必须为合法邮箱，最大长度 `254`
+- `password`：必填，不能全空白
+
+- `POST /posts`
+- `content`：必填，不能全空白，最大长度 `2000`
+
+校验失败统一返回格式：
+
+```json
+{
+  "error": "invalid request parameters",
+  "details": [
+    {
+      "field": "email",
+      "message": "email must be a valid email"
+    }
+  ]
+}
+```
+
 ### 受保护接口请求头
 
 ```http
@@ -116,7 +146,7 @@ curl -X POST http://localhost:8025/api/v1/auth/register \
     "nickname":"jack",
     "realName":"Jack Sparrow",
     "email":"jack@example.com",
-    "password":"strong-password",
+    "password":"StrongPass123",
     "birthday":946684800
   }'
 ```
@@ -128,7 +158,7 @@ curl -X POST http://localhost:8025/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email":"jack@example.com",
-    "password":"strong-password"
+    "password":"StrongPass123"
   }'
 ```
 

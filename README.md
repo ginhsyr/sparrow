@@ -97,6 +97,36 @@ Note: legacy endpoint `POST /posts/like` has been removed.
 - `includeEdits` (`true/false`, default `false`)
 - `editsLimit` (`1-200`, default `20`, only effective when `includeEdits=true`)
 
+### Request Validation
+
+- `POST /auth/register`
+- `nickname`: required, cannot be blank, max length `20`
+- `realName`: required, cannot be blank, max length `20`
+- `email`: required, cannot be blank, must be valid email, max length `254`
+- `password`: required, length `8-72`, must include uppercase + lowercase + number
+- `birthday`: optional, Unix timestamp (seconds)
+
+- `POST /auth/login`
+- `email`: required, cannot be blank, must be valid email, max length `254`
+- `password`: required, cannot be blank
+
+- `POST /posts`
+- `content`: required, cannot be blank, max length `2000`
+
+Validation failures use unified response format:
+
+```json
+{
+  "error": "invalid request parameters",
+  "details": [
+    {
+      "field": "email",
+      "message": "email must be a valid email"
+    }
+  ]
+}
+```
+
 ### Protected Endpoints
 
 Use header:
@@ -118,7 +148,7 @@ curl -X POST http://localhost:8025/api/v1/auth/register \
     "nickname":"jack",
     "realName":"Jack Sparrow",
     "email":"jack@example.com",
-    "password":"strong-password",
+    "password":"StrongPass123",
     "birthday":946684800
   }'
 ```
@@ -130,7 +160,7 @@ curl -X POST http://localhost:8025/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email":"jack@example.com",
-    "password":"strong-password"
+    "password":"StrongPass123"
   }'
 ```
 
