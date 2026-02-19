@@ -19,6 +19,12 @@ It provides user registration/login, post creation/query, like actions, and SSE 
 - Post creation and post query with optional content/edit loading
 - Post like API
 - SSE subscription endpoint for real-time notifications
+- Graceful shutdown on `SIGINT`/`SIGTERM`
+- HTTP server timeout controls (read/write/idle/read-header)
+- Request trace ID propagation (`X-Trace-Id`) and structured request logging
+- IP-based rate limiting
+- Configurable CORS policy
+- Tiered health checks (`liveness` / `readiness`)
 - Auto migration on startup
 - Partitioned `post_likes` table (hash partition by `post_id`, 64 partitions by default)
 
@@ -73,6 +79,14 @@ docker compose up --build
 | `DB_PORT` | Yes | PostgreSQL port |
 | `JWT_SIGNING_KEY` | Yes | JWT signing key, must be at least 32 characters |
 | `LOG_LEVEL` | Yes | Zap log level (for example: `debug`, `info`, `warn`, `error`) |
+| `HTTP_READ_TIMEOUT_SEC` | No | HTTP read timeout in seconds (default `10`) |
+| `HTTP_WRITE_TIMEOUT_SEC` | No | HTTP write timeout in seconds (default `15`) |
+| `HTTP_IDLE_TIMEOUT_SEC` | No | HTTP idle timeout in seconds (default `60`) |
+| `HTTP_READ_HEADER_TIMEOUT_SEC` | No | HTTP read-header timeout in seconds (default `5`) |
+| `SHUTDOWN_TIMEOUT_SEC` | No | Graceful shutdown timeout in seconds (default `10`) |
+| `RATE_LIMIT_PER_MIN` | No | Per-IP refill quota per minute for rate limiting (default `120`) |
+| `RATE_LIMIT_BURST` | No | Per-IP token bucket capacity (default `20`) |
+| `CORS_ALLOW_ORIGINS` | No | Comma-separated allowed origins, `*` means allow all (default `*`) |
 
 ## API Overview
 
@@ -80,6 +94,10 @@ Base path: `/api/v1`
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
+| `GET` | `/health/live` | No | Liveness check (process is alive) |
+| `GET` | `/health/ready` | No | Readiness check (includes DB ping) |
+| `GET` | `/api/v1/health/live` | No | Liveness check under API prefix |
+| `GET` | `/api/v1/health/ready` | No | Readiness check under API prefix |
 | `GET` | `/ping` | No | Health check, returns `"pong"` |
 | `GET` | `/user/:id` | No | Get user by ID |
 | `POST` | `/auth/register` | No | Register user |
@@ -90,6 +108,12 @@ Base path: `/api/v1`
 | `GET` | `/subscribe/notify` | Bearer token + role | SSE notifications |
 
 Note: legacy endpoint `POST /posts/like` has been removed.
+
+### Observability and Request Headers
+
+- Every request includes/returns `X-Trace-Id`. If client does not provide one, server generates it.
+- Request logs include `traceId`, method, route, URI, status, latency, and client IP.
+- Requests can be rejected with `429 Too Many Requests` when per-IP limiter is exceeded.
 
 ### Query Parameters for `GET /posts/:id`
 

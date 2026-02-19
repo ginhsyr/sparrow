@@ -19,6 +19,12 @@ Sparrow 是一个基于 Gin + GORM 的轻量论坛后端服务。
 - 帖子创建与查询（支持按需加载正文和编辑历史）
 - 帖子点赞
 - SSE 实时通知订阅接口
+- 支持 `SIGINT`/`SIGTERM` 的优雅停机
+- HTTP 超时配置（read/write/idle/read-header）
+- 请求链路 Trace ID（`X-Trace-Id`）和结构化请求日志
+- 基于 IP 的限流
+- 可配置 CORS 策略
+- 分级健康检查（`liveness` / `readiness`）
 - 启动时自动建表/迁移
 - `post_likes` 哈希分区表（按 `post_id`，默认 64 个分区）
 
@@ -73,6 +79,14 @@ docker compose up --build
 | `DB_PORT` | 是 | PostgreSQL 端口 |
 | `JWT_SIGNING_KEY` | 是 | JWT 签名密钥，至少 32 个字符 |
 | `LOG_LEVEL` | 是 | Zap 日志级别（如 `debug`、`info`、`warn`、`error`） |
+| `HTTP_READ_TIMEOUT_SEC` | 否 | HTTP 读超时（秒，默认 `10`） |
+| `HTTP_WRITE_TIMEOUT_SEC` | 否 | HTTP 写超时（秒，默认 `15`） |
+| `HTTP_IDLE_TIMEOUT_SEC` | 否 | HTTP 空闲超时（秒，默认 `60`） |
+| `HTTP_READ_HEADER_TIMEOUT_SEC` | 否 | HTTP 请求头读超时（秒，默认 `5`） |
+| `SHUTDOWN_TIMEOUT_SEC` | 否 | 优雅停机超时（秒，默认 `10`） |
+| `RATE_LIMIT_PER_MIN` | 否 | 每个 IP 每分钟限流补充额度（默认 `120`） |
+| `RATE_LIMIT_BURST` | 否 | 每个 IP 令牌桶容量（默认 `20`） |
+| `CORS_ALLOW_ORIGINS` | 否 | 允许跨域来源，逗号分隔，`*` 表示全部允许（默认 `*`） |
 
 ## API 概览
 
@@ -80,6 +94,10 @@ docker compose up --build
 
 | 方法 | 路径 | 鉴权 | 说明 |
 | --- | --- | --- | --- |
+| `GET` | `/health/live` | 否 | 存活检查（进程存活） |
+| `GET` | `/health/ready` | 否 | 就绪检查（包含数据库 Ping） |
+| `GET` | `/api/v1/health/live` | 否 | API 前缀下的存活检查 |
+| `GET` | `/api/v1/health/ready` | 否 | API 前缀下的就绪检查 |
 | `GET` | `/ping` | 否 | 健康检查，返回 `"pong"` |
 | `GET` | `/user/:id` | 否 | 按用户 ID 查询 |
 | `POST` | `/auth/register` | 否 | 注册 |
@@ -90,6 +108,12 @@ docker compose up --build
 | `GET` | `/subscribe/notify` | Bearer Token + 角色 | SSE 订阅通知 |
 
 说明：旧接口 `POST /posts/like` 已移除。
+
+### 可观测性与请求头
+
+- 每个请求都会携带并回传 `X-Trace-Id`；若客户端未传，服务端自动生成。
+- 请求日志包含 `traceId`、方法、路由、URI、状态码、耗时、客户端 IP。
+- 当同一 IP 超过限流阈值时，会返回 `429 Too Many Requests`。
 
 ### `GET /posts/:id` 查询参数
 
