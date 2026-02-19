@@ -4,6 +4,7 @@ import (
 	"Sparrow/internal/model"
 	"fmt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"strconv"
 )
 
@@ -84,8 +85,34 @@ func (r *PostRepository) CreatePostWithContent(post *model.Post, content *model.
 	})
 }
 
-func (r *PostRepository) PostLike(postLike *model.PostLike) error {
-	return r.DB.Session(&gorm.Session{NewDB: true}).Create(postLike).Error
+func (r *PostRepository) PostLike(postLike *model.PostLike) (bool, error) {
+	inserted := false
+	err := r.DB.Session(&gorm.Session{NewDB: true}).Transaction(func(tx *gorm.DB) error {
+		result := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "post_id"}, {Name: "user_id"}},
+			DoNothing: true,
+		}).Create(postLike)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		if result.RowsAffected == 0 {
+			return nil
+		}
+		inserted = true
+
+		update := tx.Model(&model.Post{}).
+			Where("post_id = ?", postLike.PostID).
+			UpdateColumn("like_count", gorm.Expr("like_count + 1"))
+		if update.Error != nil {
+			return update.Error
+		}
+		if update.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
+	return inserted, err
 }
 
 func (r *PostRepository) PostExists(postID int64) (bool, error) {

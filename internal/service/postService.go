@@ -4,12 +4,14 @@ import (
 	"Sparrow/internal/model"
 	"Sparrow/internal/repository"
 	"errors"
+	"gorm.io/gorm"
 )
 
 var (
-	ErrInvalidPostID = errors.New("invalid post id")
-	ErrPostNotFound  = errors.New("post not found")
-	ErrUserNotFound  = errors.New("user not found")
+	ErrInvalidPostID    = errors.New("invalid post id")
+	ErrPostNotFound     = errors.New("post not found")
+	ErrUserNotFound     = errors.New("user not found")
+	ErrPostAlreadyLiked = errors.New("post already liked")
 )
 
 type PostService struct {
@@ -84,6 +86,15 @@ func (s *PostService) PostLike(postID, userID int64) (*model.PostLike, error) {
 		PostID: postID,
 		UserID: userID,
 	}
-	err = s.repo.PostLike(postLike)
-	return postLike, err
+	inserted, err := s.repo.PostLike(postLike)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrPostNotFound
+		}
+		return nil, err
+	}
+	if !inserted {
+		return nil, ErrPostAlreadyLiked
+	}
+	return postLike, nil
 }

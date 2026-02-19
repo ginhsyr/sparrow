@@ -42,23 +42,20 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 				authGroup.POST("/login", userHandler.LogIn)
 			}
 
-            posts := v1.Group("/posts")
-            {
-                posts.GET("/:id", postHandler.GetPost)
-                // Support both "/posts" and "/posts/" to avoid redirect issues on POST
-                posts.POST("", middleware.JWTAuth(), middleware.RequireRole(model.Users, model.Admin), postHandler.CreatePost)
-                posts.POST("/", middleware.JWTAuth(), middleware.RequireRole(model.Users, model.Admin), postHandler.CreatePost)
-                postLikeGroup := posts.Group("/like")
-                {
-                    postLikeGroup.POST("", middleware.JWTAuth(), middleware.RequireRole(model.Users, model.Admin), postHandler.PostLike)
-                    postLikeGroup.POST("/", middleware.JWTAuth(), middleware.RequireRole(model.Users, model.Admin), postHandler.PostLike)
-                }
-            }
+			posts := v1.Group("/posts")
+			{
+				posts.GET("/:id", postHandler.GetPost)
+				// Support both "/posts" and "/posts/" to avoid redirect issues on POST
+				posts.POST("", middleware.JWTAuth(), middleware.RequireRole(model.Users, model.Admin), postHandler.CreatePost)
+				posts.POST("/", middleware.JWTAuth(), middleware.RequireRole(model.Users, model.Admin), postHandler.CreatePost)
+				posts.POST("/:id/like", middleware.JWTAuth(), middleware.RequireRole(model.Users, model.Admin), postHandler.PostLike)
+				posts.POST("/:id/like/", middleware.JWTAuth(), middleware.RequireRole(model.Users, model.Admin), postHandler.PostLike)
+			}
 
-        subscribeGroup := v1.Group("/subscribe")
-        {
-            subscribeGroup.GET("/notify", middleware.JWTAuth(), middleware.RequireRole(model.Users, model.Admin), handler.Notifies)
-        }
+			subscribeGroup := v1.Group("/subscribe")
+			{
+				subscribeGroup.GET("/notify", middleware.JWTAuth(), middleware.RequireRole(model.Users, model.Admin), handler.Notifies)
+			}
 		}
 
 	}

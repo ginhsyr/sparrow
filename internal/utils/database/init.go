@@ -24,6 +24,12 @@ func DBInit(db *gorm.DB) {
 		}
 	}
 
+	if !db.Migrator().HasColumn(&model.Post{}, "like_count") {
+		if err := db.Migrator().AddColumn(&model.Post{}, "LikeCount"); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	if !db.Migrator().HasTable(&model.PostLike{}) {
 		if err := db.Exec(`CREATE TABLE post_likes (
 	    		post_id BIGINT NOT NULL,

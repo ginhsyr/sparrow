@@ -106,16 +106,14 @@ func (h *PostHandler) PostLike(c *gin.Context) {
 	if userID == 0 {
 		return
 	}
-	var req struct {
-		PostID int64 `json:"postID"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.Log.Error("bind json err", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+	postID, err := parsePostIDForLike(c)
+	if err != nil {
+		utils.Log.Error("parse like postID err", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid postID"})
 		return
 	}
 
-	postLike, err := h.service.PostLike(req.PostID, userID)
+	postLike, err := h.service.PostLike(postID, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidPostID):
@@ -124,13 +122,28 @@ func (h *PostHandler) PostLike(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "post not found"})
 		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token user"})
+		case errors.Is(err, service.ErrPostAlreadyLiked):
+			c.JSON(http.StatusOK, gin.H{
+				"postID":  postID,
+				"userID":  userID,
+				"liked":   false,
+				"message": "already liked",
+			})
 		default:
 			utils.Log.Error("like post err", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to like post"})
 		}
 		return
 	}
-	c.JSON(http.StatusCreated, postLike)
+	c.JSON(http.StatusCreated, gin.H{
+		"postID": postLike.PostID,
+		"userID": postLike.UserID,
+		"liked":  true,
+	})
+}
+
+func parsePostIDForLike(c *gin.Context) (int64, error) {
+	return strconv.ParseInt(c.Param("id"), 10, 64)
 }
 
 func getUserID(c *gin.Context) int64 {
